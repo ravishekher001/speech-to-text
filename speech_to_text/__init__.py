@@ -4,7 +4,7 @@ from watson_developer_cloud import SpeechToTextV1
 from .utils import guess_mime_type
 from .formatters import get_formatter
 
-__version__ = '0.0.1'
+__version__ = '0.1.0'
 __title__ = 'speech_to_text'
 __license__ = 'MIT'
 __description__ = "Speech to Text command using IBM Watson API"
