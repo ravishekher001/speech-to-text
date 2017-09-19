@@ -6,10 +6,48 @@
 
 import click
 import progressbar
+import json
+import yaml
+import os.path
 
 from .config import SUPPORTED_AUDIO_MODELS, SUPPORTED_CONTENT_TYPES
 from . import recognize_speech
 from .formatters import get_formatter
+
+
+def parse_json(options_content):
+    return json.loads(options_content)
+
+
+def parse_yaml(options_content):
+    return yaml.load(options_content)
+
+
+OPTIONS_PARSERS_BY_EXTENSION = {
+    'json': parse_json,
+    'yaml': parse_yaml,
+    'yml': parse_yaml
+}
+
+VALID_OPTIONS_EXTENSIONS = [k for k in OPTIONS_PARSERS_BY_EXTENSION]
+
+
+def parse_options(options_file_path):
+    name, extension = os.path.splitext(options_file_path)
+    parser = OPTIONS_PARSERS_BY_EXTENSION[extension[1:].lower()]
+    with open(options_file_path, 'r') as fp:
+        options_content = fp.read()
+        return parser(options_content)
+
+
+def validate_options_name(ctx, param, value):
+    if not value:
+        return value
+    if not any([value.lower().endswith('.' + ext) for ext in VALID_OPTIONS_EXTENSIONS]):
+        raise click.BadParameter(
+            'options must be: {}'.format(repr(VALID_OPTIONS_EXTENSIONS)))
+
+    return value
 
 
 @click.command()
@@ -24,10 +62,15 @@ from .formatters import get_formatter
               type=click.Choice(SUPPORTED_CONTENT_TYPES), required=False)
 @click.option('-m', '--audio-model',
               type=click.Choice(SUPPORTED_AUDIO_MODELS), required=False)
+@click.option('-t', '--inactivity-timeout', type=int, required=False,
+              help="Time in seconds to timeout audio if silent")
+@click.option('-o', '--options', type=click.Path(exists=True),
+              callback=validate_options_name, required=False)
 @click.option('--progress/--no-progress', default=True)
 @click.argument('output', type=click.Path(exists=False), required=True)
 def speech_to_text(input, username, password, formatter,
-                   content_type, audio_model, progress, output):
+                   content_type, audio_model, inactivity_timeout,
+                   options, progress, output):
 
     APP = {
         'progress_bar': None
@@ -51,9 +94,14 @@ def speech_to_text(input, username, password, formatter,
 
     _callback = progress_callback if progress else None
 
+    if options:
+        options = parse_options(options)
+
     result = recognize_speech(username, password, audio_file_path=input,
                               forced_mime_type=content_type,
                               audio_model=audio_model,
+                              inactivity_timeout=inactivity_timeout,
+                              extra_options=options,
                               progress_callback=_callback)
 
     FormatterClass = get_formatter(formatter)

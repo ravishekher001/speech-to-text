@@ -29,9 +29,17 @@ def chunked_upload(audio_file_path, buffer_size, callback=None):
             yield data
 
 
+def build_default_options(**kwargs):
+    return {k: v for k, v in kwargs.items() if v}
+
+
 def recognize_speech(username, password, audio_file_path,
-                     forced_mime_type, audio_model=None,
-                     progress_callback=None, buffer_size=_4K):
+                     forced_mime_type,
+                     buffer_size=_4K,
+                     audio_model=None,
+                     inactivity_timeout=None,
+                     extra_options=None,
+                     progress_callback=None):
     stt = SpeechToTextV1(username=username, password=password)
     content_type = guess_mime_type(audio_file_path, forced_mime_type)
     kwargs = {
@@ -40,8 +48,13 @@ def recognize_speech(username, password, audio_file_path,
         'timestamps': False,
         'max_alternatives': 1
     }
-    if audio_model:
-        kwargs['model'] = audio_model
+
+    default_options = build_default_options(
+        audio_model=audio_model,
+        inactivity_timeout=inactivity_timeout)
+    kwargs.update(default_options)
+    kwargs.update(extra_options or {})
+
     return stt.recognize(
         chunked_upload(audio_file_path, buffer_size, progress_callback),
         **kwargs)

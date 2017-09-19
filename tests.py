@@ -139,7 +139,7 @@ class GuessMimeTypeTestCase(unittest.TestCase):
 
 
 class CommandTestCase(unittest.TestCase):
-    def test_command(self):
+    def test_command_basic_parameters(self):
         """Simple high level test for our command. Needs improvements."""
         runner = CliRunner()
         with tempfile.NamedTemporaryFile(mode='w+b', dir='/tmp',
